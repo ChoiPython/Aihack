@@ -1,10 +1,17 @@
-// RAG 파이프라인: 검색(Retrieval)은 /api/companies(임베딩 + ChromaDB 벡터 검색,
-// 실패 시 키워드 폴백)를 호출하고, 생성(Generation)은 /api/recommend(Gemini)를 호출한다.
-// RecommendationCard.jsx 등 화면 컴포넌트는 mock 시절 필드(jobs, evidenceChunks,
-// financialHealth 등)를 그대로 기대하므로, 실제 DB 필드로부터 이 필드들을
-// 최대한 사실 기반으로 합성하는 어댑터(adaptCompanyRow)를 거쳐서 넘긴다.
+// 실제 백엔드 API(/api/companies, /api/policies)를 호출해 BEPA 청년친화강소기업
+// 데이터베이스에서 기업을 검색(Retrieval)하고, 사용자 우선순위에 맞춰 클라이언트에서
+// 재정렬한 뒤, /api/recommend(Gemini)로 추천 이유를 배치 생성한다(Generation).
+// TODO: AI/RAG 담당의 벡터 검색(lib/ai)이 /api/companies에 연결되면 이 키워드 기반
+// 재정렬은 벡터 유사도 결과를 그대로 신뢰하는 방식으로 단순화할 수 있다 (PRD 14.4).
 
-import { clampScore } from '../utils/scoreFormatter'
+import {
+  clampScore,
+  normalizeSalary,
+  normalizeWorkLifeBalance,
+  normalizeWelfare,
+  normalizeGrowth,
+  PRIORITY_WEIGHTS,
+} from '../utils/scoreFormatter'
 import { getPoliciesForCompany } from './policyMatcher'
 
 // Gemini 호출은 서버리스 함수(api/recommend.js)로 이전됨 — API 키가
@@ -36,10 +43,7 @@ function overlaps(userTokens, companyTokens) {
   const matched = []
   for (const userToken of userTokens) {
     for (const companyToken of companyTokens) {
-      if (
-        companyToken.includes(userToken) ||
-        userToken.includes(companyToken)
-      ) {
+      if (companyToken.includes(userToken) || userToken.includes(companyToken)) {
         matched.push(companyToken)
       }
     }
@@ -47,100 +51,102 @@ function overlaps(userTokens, companyTokens) {
   return [...new Set(matched)]
 }
 
-// 사용자 입력을 하나의 자연어 검색어로 합쳐 /api/companies에 넘긴다.
-function buildSearchQuery(userProfile) {
-  const parts = [
-    userProfile.freeText,
-    userProfile.industry,
-    userProfile.jobRole,
-    userProfile.skills,
-    userProfile.location,
-    (userProfile.benefits || []).join(' '),
-  ].filter(Boolean)
-  return parts.join(' ') || '기업 추천'
-}
+// /api/companies?q=는 벡터 검색이 아니라 단일 컬럼 ILIKE('%q%') 매칭이라
+// 문장을 통째로 보내면 어떤 컬럼과도 안 맞아 0건이 된다. 그래서 industry/location처럼
+// 실제 컬럼 값과 정확히 겹치는 짧은 term으로 나눠 검색한 뒤 결과를 합친다.
+// freeText는 검색 자체가 아니라 이후 scoreCompany의 재정렬/이유 생성에만 사용한다.
+async function fetchCandidateCompanies(userProfile) {
+  const { industry = '', location = '' } = userProfile
+  const terms = [industry, location && location !== '부산 전체' ? location : ''].filter(Boolean)
 
-// companies 테이블 실제 컬럼 중 텍스트성 필드에서 사용자 입력과 겹치는 키워드를 뽑는다.
-function buildMatchingKeywords(row, userProfile) {
-  const userTokens = [
-    ...tokenize(userProfile.industry),
-    ...tokenize(userProfile.jobRole),
-    ...tokenize(userProfile.skills),
-    ...tokenize(userProfile.location),
-    ...tokenize(userProfile.freeText),
-    ...(userProfile.benefits || []),
-  ]
-  const companyTokens = [row.industry, row.category, row.region, row.products_services, row.certifications].filter(
-    Boolean,
+  const results = await Promise.all(
+    terms.map(async (term) => {
+      const res = await fetch(`/api/companies?q=${encodeURIComponent(term)}`)
+      if (!res.ok) throw new Error(`기업 검색 실패 (${res.status})`)
+      const { companies } = await res.json()
+      return companies
+    }),
   )
-  return overlaps(userTokens, companyTokens)
-}
 
-// worklife_balance_detail/welfare_detail/training_detail을 "근거 문서"처럼 노출한다 — 실제 DB 텍스트이므로 지어내지 않는다.
-function buildEvidenceChunks(row) {
-  return [
-    { source: '워라밸 데이터', text: row.worklife_balance_detail },
-    { source: '복지 데이터', text: row.welfare_detail },
-    { source: '교육/훈련 데이터', text: row.training_detail },
-  ].filter((chunk) => chunk.text)
-}
-
-// revenue/employee_* 실데이터가 있으면 그 수치를 그대로 보여주고, 없으면 '정보 없음' 처리한다.
-function buildFinancialHealth(row) {
-  const parts = []
-  if (row.revenue != null) parts.push(`연매출 ${row.revenue}`)
-  if (row.employee_total != null) parts.push(`전체 임직원 ${row.employee_total}명`)
-  if (row.employee_regular != null) parts.push(`정규직 ${row.employee_regular}명`)
-
-  return {
-    rating: parts.length ? '실데이터 기반' : '정보 없음',
-    detail: parts.length ? parts.join(' · ') : '재무 정보가 아직 없습니다.',
+  const merged = new Map()
+  for (const list of results) {
+    for (const company of list) merged.set(company.id, company)
   }
+  return [...merged.values()]
 }
 
-function buildRecommendedStrategy(row, userProfile) {
-  const priority = userProfile.priority || '직무적합성'
-  return `${row.name}은(는) ${priority}을(를) 중요하게 보는 지원자에게 적합합니다. 자기소개서에 관련 경험을 구체적으로 연결해서 작성해보세요.`
-}
+// 사용자 입력과 기업 데이터를 비교해 적합도(0~100)와 매칭 근거를 계산한다.
+function scoreCompany(company, userProfile) {
+  const { industry = '', location = '', benefits = [], freeText = '', priority } = userProfile
 
-// /api/companies가 반환하는 실제 DB row를 RecommendationCard.jsx가 기대하는 화면 모델로 변환한다.
-// location/jobs/evidenceChunks/financialHealth/recommendedStrategy는 실제 스키마에 없는
-// mock 전용 필드라 여기서 사실 기반으로 합성하고, 대응하는 실데이터가 없는 것(jobs)은 빈 배열로 둔다.
-function adaptCompanyRow(row, userProfile) {
-  return {
-    ...row,
-    location: row.region ?? '지역 미상',
-    jobs: [],
-    matchScore: row.similarity != null ? clampScore(row.similarity * 100) : 70,
-    matchingKeywords: buildMatchingKeywords(row, userProfile),
-    reasons: [],
-    evidenceChunks: buildEvidenceChunks(row),
-    recommendedStrategy: buildRecommendedStrategy(row, userProfile),
-    financialHealth: buildFinancialHealth(row),
-  }
+  const userFreeTextTokens = tokenize(freeText)
+
+  const industryMatch = company.industry && company.industry === industry ? [company.industry] : []
+  const locationMatch =
+    location && (location === '부산 전체' || company.region === location) ? [company.region] : []
+  // companies.category(급여/워라밸/복지/미래)가 선택한 우선순위와 같으면
+  // BEPA가 이미 그 부문에서 인증한 기업이라는 뜻이라 강한 신호로 취급한다.
+  const categoryMatch = company.category === priority ? [company.category] : []
+
+  const detailText = [company.welfare_detail, company.worklife_balance_detail, company.training_detail]
+    .filter(Boolean)
+    .join(' ')
+  const benefitMatch = benefits.filter((benefit) => detailText.includes(benefit))
+
+  const freeTextMatch = overlaps(
+    userFreeTextTokens,
+    [company.industry, company.category, company.company_size, company.products_services, company.certifications].filter(
+      Boolean,
+    ),
+  )
+
+  const matchingKeywords = [
+    ...new Set([...categoryMatch, ...industryMatch, ...locationMatch, ...benefitMatch, ...freeTextMatch]),
+  ]
+
+  const overlapCount =
+    categoryMatch.length * 3 + industryMatch.length * 2 + locationMatch.length * 2 + benefitMatch.length + freeTextMatch.length
+  const matchDimensionScore = clampScore((overlapCount / 6) * 100)
+
+  const weights = PRIORITY_WEIGHTS[priority] || PRIORITY_WEIGHTS['워라밸']
+  const finalScore = clampScore(
+    normalizeSalary(company.avg_annual_salary) * weights.salary +
+      normalizeWorkLifeBalance(company.worklife_balance_score) * weights.workLifeBalance +
+      normalizeWelfare(company.welfare_score) * weights.welfare +
+      normalizeGrowth(company.training_score) * weights.growth +
+      matchDimensionScore * weights.match,
+  )
+
+  const dynamicReasons = []
+  if (categoryMatch.length) dynamicReasons.push(`BEPA 인증 부문(${company.category})이 선택하신 우선순위와 일치`)
+  if (industryMatch.length) dynamicReasons.push(`관심 산업과 일치: ${company.industry}`)
+  if (locationMatch.length) dynamicReasons.push(`근무 희망 지역과 일치: ${company.region}`)
+  if (benefitMatch.length) dynamicReasons.push(`선호 복지와 관련된 제도 보유: ${benefitMatch.join(', ')}`)
+  if (freeTextMatch.length) dynamicReasons.push(`자유 입력 내용과 관련된 키워드: ${freeTextMatch.join(', ')}`)
+
+  return { finalScore, matchingKeywords, reasons: dynamicReasons }
 }
 
 /**
  * 사용자 프로필을 받아 Top-K 추천 기업 목록을 반환한다.
- * 1) /api/companies로 벡터 검색(실패 시 키워드 폴백)된 Top-K 기업을 가져오고 (검색/Retrieval)
+ * 1) /api/companies?q=로 후보 기업을 검색하고, 우선순위 기준으로 클라이언트에서 재정렬 (검색/Retrieval)
  * 2) Top-K 후보를 /api/recommend(Gemini)에 배치로 넘겨 추천 이유를 생성한다 (생성/Generation).
- * 검색/생성 API가 실패하면 에러를 그대로 던져 호출부(HomePage)가 에러 상태를 보여주게 한다.
+ * 검색 결과가 없으면 빈 배열을 반환해 Empty State로 이어지고, API/Gemini 호출이 실패하면
+ * 에러를 그대로 던져 호출부(HomePage)가 에러 상태를 보여주게 한다.
  */
 export async function getRecommendations(userProfile, topK = 5) {
-  const query = buildSearchQuery(userProfile)
-  const searchRes = await fetch(`/api/companies?q=${encodeURIComponent(query)}`)
-  if (!searchRes.ok) {
-    const errText = await searchRes.text()
-    throw new Error(`기업 검색 API 오류 (${searchRes.status}): ${errText}`)
-  }
+  const companies = await fetchCandidateCompanies(userProfile)
 
-  const { companies } = await searchRes.json()
-  const topCompanies = companies.slice(0, topK).map((row) => adaptCompanyRow(row, userProfile))
+  const topCompanies = companies
+    .map((company) => {
+      const { finalScore, matchingKeywords, reasons } = scoreCompany(company, userProfile)
+      return { ...company, matchScore: finalScore, matchingKeywords, reasons }
+    })
+    .sort((a, b) => b.matchScore - a.matchScore)
+    .slice(0, topK)
 
   if (topCompanies.length === 0) return []
 
-  // 정책은 실제 DB(/api/policies)에서 지역 기준으로 조회하고(실패 시 로컬 mock으로 대체),
-  // 추천 이유는 Gemini로 배치 생성한다 — 두 호출은 서로 무관하니 병렬로 처리한다.
   const [aiReasons, withPolicies] = await Promise.all([
     generateRecommendationReasons(userProfile, topCompanies),
     Promise.all(

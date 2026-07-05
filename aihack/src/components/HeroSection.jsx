@@ -6,10 +6,10 @@ const EXAMPLE_QUERY =
   '나는 동아대 AI학과 학점은 3.7, 1순위로 워라밸을 원하고 2순위로 연봉이야. 나에게 맞는 기업들을 찾아줘'
 
 const POPULAR_KEYWORDS = [
-  { label: '#신입환영', phrase: '신입 개발자를 채용하는 곳' },
-  { label: '#IT', phrase: 'IT·데이터 업종' },
-  { label: '#핀테크', phrase: '핀테크 업종' },
-  { label: '#부산', phrase: '부산 지역' },
+  { label: '#정보통신업', phrase: '정보통신업' },
+  { label: '#제조업', phrase: '제조업' },
+  { label: '#금융보험업', phrase: '금융 및 보험업' },
+  { label: '#해운대구', phrase: '해운대구' },
   { label: '#워라밸', phrase: '워라밸을 중요하게 생각해' },
   { label: '#복지좋은기업', phrase: '복지가 좋은 기업' },
 ]
@@ -94,7 +94,7 @@ export default function HeroSection({ onQuickSearch, isLoading }) {
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder={EXAMPLE_QUERY}
                 rows={2}
-                className="quick-input resize-none"
+                className="quick-input min-w-0 resize-none"
               />
             </QuickField>
 
@@ -133,7 +133,7 @@ export default function HeroSection({ onQuickSearch, isLoading }) {
 
 function QuickField({ label, children }) {
   return (
-    <label className="block text-left">
+    <label className="flex flex-1 min-w-0 flex-col text-left">
       <span className="mb-1.5 block text-xs font-semibold text-slate-500">{label}</span>
       {children}
     </label>

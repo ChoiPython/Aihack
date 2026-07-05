@@ -1,29 +1,49 @@
 import { forwardRef, useImperativeHandle, useState } from 'react'
 import { SectionHeading } from './SectionHeading'
-import { INDUSTRY_OPTIONS, LOCATION_OPTIONS } from '../data/companyOptions'
 
-export { INDUSTRY_OPTIONS, LOCATION_OPTIONS }
-
-const BENEFIT_OPTIONS = [
-  '재택 근무 병행',
-  '자율 출퇴근',
-  '자기계발비 지원',
-  '식대 지원',
-  '통근버스 운영',
-  '자유복장',
-  '정시 퇴근',
-  '연구수당',
+// BEPA 청끌기업 실데이터(aihack/data/2026_청끌기업.csv) 기준 산업/지역 목록.
+// 통계청 표준산업분류 대분류 중 실제 데이터에 존재하는 것만, 지역은 부산 16개 구/군.
+export const INDUSTRY_OPTIONS = [
+  '건설업',
+  '과학 및 기술서비스업',
+  '교육서비스업',
+  '금융 및 보험업',
+  '도매 및 소매업',
+  '보건업 및 사회복지 서비스업',
+  '사업시설관리 및 사업지원 서비스업',
+  '숙박 및 음식점업',
+  '운수 및 창고업',
+  '정보통신업',
+  '제조업',
 ]
 
-const PRIORITY_OPTIONS = ['성장성', '안정성', '연봉', '워라밸', '직무적합성']
+export const LOCATION_OPTIONS = [
+  '부산 전체',
+  '강서구', '금정구', '기장군', '남구', '동구', '동래구', '부산진구', '북구',
+  '사상구', '사하구', '서구', '수영구', '연제구', '영도구', '중구', '해운대구',
+]
+
+// 기업의 worklife_balance_detail/welfare_detail/training_detail 텍스트에서
+// 부분 문자열로 찾을 수 있는 대표 항목들 (실데이터 상세 텍스트 기준으로 추림).
+const BENEFIT_OPTIONS = [
+  '재택근무',
+  '육아휴직',
+  '4대보험',
+  '퇴직연금',
+  '자기계발비 지원',
+  '유연근무제',
+  '학자금 지원',
+  '해외연수',
+]
+
+// companies.category(급여/워라밸/복지/미래)와 이름을 맞춘 우선순위 기준
+const PRIORITY_OPTIONS = ['급여', '워라밸', '복지', '미래']
 
 export const INITIAL_PROFILE = {
   industry: INDUSTRY_OPTIONS[0],
-  jobRole: '',
-  skills: '',
   location: LOCATION_OPTIONS[0],
   benefits: [],
-  priority: '직무적합성',
+  priority: '워라밸',
   freeText: '',
 }
 
@@ -57,12 +77,10 @@ const UserProfileForm = forwardRef(function UserProfileForm({ onSubmit, isLoadin
   function fillDemoExample() {
     setProfile({
       industry: '정보통신업',
-      jobRole: '신입 개발자',
-      skills: 'Java, Spring, AWS',
-      location: '사상구',
-      benefits: ['재택 근무 병행', '자기계발비 지원'],
-      priority: '직무적합성',
-      freeText: 'IT 분야에서 백엔드 개발자로 커리어를 시작하고 싶습니다.',
+      location: '해운대구',
+      benefits: ['재택근무', '자기계발비 지원'],
+      priority: '워라밸',
+      freeText: '워라밸 좋은 IT 기업을 찾고 있어요. 재택근무도 가능하면 좋겠어요.',
     })
   }
 
@@ -72,7 +90,7 @@ const UserProfileForm = forwardRef(function UserProfileForm({ onSubmit, isLoadin
         <SectionHeading
           eyebrow="사용자 질의"
           title="나에게 맞는 기업, 조건을 입력해주세요"
-          description="입력하신 정보는 embedding으로 변환되어 vector DB에서 유사한 기업을 검색하는 데 사용돼요."
+          description="입력하신 정보로 BEPA 청년친화강소기업 데이터베이스에서 유사한 기업을 검색해요."
         />
 
         <form
@@ -107,26 +125,6 @@ const UserProfileForm = forwardRef(function UserProfileForm({ onSubmit, isLoadin
                 ))}
               </select>
             </Field>
-
-            <Field label="희망 직무">
-              <input
-                type="text"
-                value={profile.jobRole}
-                onChange={(event) => updateField('jobRole', event.target.value)}
-                placeholder="예: 신입 개발자, 백엔드 개발자"
-                className="form-input"
-              />
-            </Field>
-
-            <Field label="보유 기술 스택">
-              <input
-                type="text"
-                value={profile.skills}
-                onChange={(event) => updateField('skills', event.target.value)}
-                placeholder="예: Java, Spring, AWS"
-                className="form-input"
-              />
-            </Field>
           </div>
 
           <Field label="선호 복지 (복수 선택 가능)">
@@ -152,7 +150,7 @@ const UserProfileForm = forwardRef(function UserProfileForm({ onSubmit, isLoadin
           </Field>
 
           <Field label="중요하게 보는 기준">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {PRIORITY_OPTIONS.map((option) => (
                 <label
                   key={option}
@@ -180,7 +178,7 @@ const UserProfileForm = forwardRef(function UserProfileForm({ onSubmit, isLoadin
             <textarea
               value={profile.freeText}
               onChange={(event) => updateField('freeText', event.target.value)}
-              placeholder="예: 금융IT 분야에서 결제 시스템을 개발해보고 싶습니다."
+              placeholder="예: 워라밸 좋은 IT 기업을 찾고 있어요."
               rows={3}
               className="form-input resize-none"
             />

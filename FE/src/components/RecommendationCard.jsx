@@ -2,6 +2,11 @@ import { useState } from 'react'
 import { formatPercentage, scoreToBadgeColor, scoreToBarColor, scoreToLabel } from '../utils/scoreFormatter'
 import { isPolicyExpired } from '../services/policyMatcher'
 
+function formatWon(value) {
+  if (value == null) return '정보 없음'
+  return `${value.toLocaleString()}만원`
+}
+
 export default function RecommendationCard({ company, rank }) {
   const [expanded, setExpanded] = useState(false)
 
@@ -15,7 +20,7 @@ export default function RecommendationCard({ company, rank }) {
           <div>
             <h3 className="text-base font-bold text-brand-navy sm:text-lg">{company.name}</h3>
             <p className="text-xs text-slate-500 sm:text-sm">
-              {company.industry} · {company.location}
+              {company.industry} · {company.region} · {company.company_size}
             </p>
           </div>
         </div>
@@ -25,11 +30,16 @@ export default function RecommendationCard({ company, rank }) {
       </div>
 
       <div className="mt-4 flex flex-wrap gap-1.5">
-        {company.jobs.slice(0, 3).map((job) => (
-          <span key={job} className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600">
-            {job}
+        {company.category && (
+          <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-brand-primary">
+            BEPA {company.category} 인증
           </span>
-        ))}
+        )}
+        {company.products_services && (
+          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600">
+            {company.products_services}
+          </span>
+        )}
       </div>
 
       <div className="mt-5">
@@ -138,31 +148,43 @@ export default function RecommendationCard({ company, rank }) {
             </div>
           )}
 
-          <div>
-            <p className="text-xs font-bold text-brand-navy">근거 문서 (source chunks)</p>
-            <div className="mt-2 space-y-2">
-              {company.evidenceChunks.map((chunk) => (
-                <div key={chunk.source} className="rounded-lg border border-slate-200 bg-white p-3">
-                  <p className="text-[11px] font-semibold text-brand-primary">{chunk.source}</p>
-                  <p className="mt-1 text-xs leading-relaxed text-slate-600">{chunk.text}</p>
-                </div>
-              ))}
+          <div className="grid gap-3 sm:grid-cols-3">
+            <DetailBlock title={`워라밸 (${company.worklife_balance_score ?? '-'}점)`} detail={company.worklife_balance_detail} />
+            <DetailBlock title={`복지 (${company.welfare_score ?? '-'}점)`} detail={company.welfare_detail} />
+            <DetailBlock title={`교육 (${company.training_score ?? '-'}점)`} detail={company.training_detail} />
+          </div>
+
+          {company.certifications && (
+            <div>
+              <p className="text-xs font-bold text-brand-navy">인증 현황</p>
+              <p className="mt-1.5 text-xs leading-relaxed text-slate-600 sm:text-sm">{company.certifications}</p>
             </div>
-          </div>
+          )}
 
           <div>
-            <p className="text-xs font-bold text-brand-navy">추천 지원 전략</p>
-            <p className="mt-1.5 text-xs leading-relaxed text-slate-600 sm:text-sm">{company.recommendedStrategy}</p>
-          </div>
-
-          <div>
-            <p className="text-xs font-bold text-brand-navy">재무 건전성</p>
-            <p className="mt-1.5 text-xs leading-relaxed text-slate-600 sm:text-sm">
-              {company.financialHealth.rating} — {company.financialHealth.detail}
-            </p>
+            <p className="text-xs font-bold text-brand-navy">급여 및 재무 정보</p>
+            <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-slate-600 sm:text-sm">
+              <span>평균 초임: {formatWon(company.avg_starting_salary)}</span>
+              <span>평균 연봉: {formatWon(company.avg_annual_salary)}</span>
+              <span>매출: {formatWon(company.revenue)}</span>
+              <span>
+                종업원 수: {company.employee_total ?? '정보 없음'}
+                {company.employee_total != null && '명'}
+              </span>
+            </div>
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function DetailBlock({ title, detail }) {
+  if (!detail) return null
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-3">
+      <p className="text-[11px] font-semibold text-brand-primary">{title}</p>
+      <p className="mt-1 text-[11px] leading-relaxed text-slate-600">{detail}</p>
     </div>
   )
 }

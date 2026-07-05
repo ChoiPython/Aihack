@@ -40,11 +40,43 @@ export function formatPercentage(score) {
   return `${clampScore(score)}%`
 }
 
-// 사용자가 선택한 우선순위 기준에 따른 가중치 (합 = 1)
+// 사용자가 선택한 우선순위 기준에 따른 가중치 (합 = 1).
+// BEPA 실데이터의 companies.category(급여/워라밸/복지/미래 중 하나, 이 기업이 어느 부문
+// 인증을 받았는지)와 이름을 맞춰서, 우선순위 선택이 실제 데이터 축과 바로 대응되게 했다.
+// "미래"는 별도 성장성 지표가 없어 training_score(교육투자)를 대리 지표로 쓴다.
 export const PRIORITY_WEIGHTS = {
-  성장성: { growthPotential: 0.4, stability: 0.15, salaryLevel: 0.15, workLifeBalance: 0.15, match: 0.15 },
-  안정성: { growthPotential: 0.15, stability: 0.4, salaryLevel: 0.15, workLifeBalance: 0.15, match: 0.15 },
-  연봉: { growthPotential: 0.15, stability: 0.15, salaryLevel: 0.4, workLifeBalance: 0.15, match: 0.15 },
-  워라밸: { growthPotential: 0.15, stability: 0.15, salaryLevel: 0.15, workLifeBalance: 0.4, match: 0.15 },
-  직무적합성: { growthPotential: 0.1, stability: 0.1, salaryLevel: 0.1, workLifeBalance: 0.1, match: 0.6 },
+  급여: { salary: 0.45, workLifeBalance: 0.1, welfare: 0.1, growth: 0.1, match: 0.25 },
+  워라밸: { salary: 0.1, workLifeBalance: 0.45, welfare: 0.1, growth: 0.1, match: 0.25 },
+  복지: { salary: 0.1, workLifeBalance: 0.1, welfare: 0.45, growth: 0.1, match: 0.25 },
+  미래: { salary: 0.1, workLifeBalance: 0.1, welfare: 0.1, growth: 0.45, match: 0.25 },
+}
+
+// 실데이터 관측 범위(2026-07-05 기준) 안에서 0~100으로 정규화한다.
+const RANGES = {
+  avgAnnualSalary: [25980, 266080],
+  worklifeBalanceScore: [2, 9],
+  welfareScore: [2, 12],
+  trainingScore: [0, 5],
+}
+
+function normalizeInRange(value, [min, max]) {
+  if (value == null || Number.isNaN(value)) return 50
+  if (max === min) return 50
+  return clampScore(((value - min) / (max - min)) * 100)
+}
+
+export function normalizeSalary(value) {
+  return normalizeInRange(value, RANGES.avgAnnualSalary)
+}
+
+export function normalizeWorkLifeBalance(value) {
+  return normalizeInRange(value, RANGES.worklifeBalanceScore)
+}
+
+export function normalizeWelfare(value) {
+  return normalizeInRange(value, RANGES.welfareScore)
+}
+
+export function normalizeGrowth(value) {
+  return normalizeInRange(value, RANGES.trainingScore)
 }

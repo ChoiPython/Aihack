@@ -8,8 +8,6 @@ const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMI
 function buildPrompt(userProfile, companies) {
   const profileText = [
     `관심 산업: ${userProfile.industry || '미지정'}`,
-    `희망 직무: ${userProfile.jobRole || '미지정'}`,
-    `보유 기술: ${userProfile.skills || '미지정'}`,
     `근무 희망 지역: ${userProfile.location || '미지정'}`,
     `선호 복지: ${(userProfile.benefits || []).join(', ') || '미지정'}`,
     `중요하게 보는 기준: ${userProfile.priority || '미지정'}`,
@@ -22,11 +20,15 @@ function buildPrompt(userProfile, companies) {
         `id: ${c.id}`,
         `이름: ${c.name}`,
         `산업: ${c.industry}`,
-        `지역: ${c.location}`,
-        `채용 직무: ${c.jobs.join(', ')}`,
-        `요구 기술: ${c.skillsWanted.join(', ')}`,
-        `복지: ${c.benefits.join(', ')}`,
-        `소개: ${c.description}`,
+        `지역: ${c.region}`,
+        `기업 규모: ${c.company_size}`,
+        `BEPA 인증 부문: ${c.category}`,
+        `평균 초임/평균 연봉: ${c.avg_starting_salary}만원 / ${c.avg_annual_salary}만원`,
+        `워라밸 점수(${c.worklife_balance_score}점): ${c.worklife_balance_detail}`,
+        `복지 점수(${c.welfare_score}점): ${c.welfare_detail}`,
+        `교육 점수(${c.training_score}점): ${c.training_detail}`,
+        `주요 사업/제품: ${c.products_services}`,
+        `인증 현황: ${c.certifications}`,
       ].join('\n'),
     )
     .join('\n\n')

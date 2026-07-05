@@ -6,8 +6,9 @@
 import { mockPolicies } from '../data/mockPolicies'
 
 export function getMatchingPolicies(company, limit = 3) {
+  const region = company.region ?? company.location ?? ''
   const matched = mockPolicies.filter(
-    (policy) => policy.targetRegion === '전국' || company.location.includes(policy.targetRegion),
+    (policy) => policy.targetRegion === '전국' || region.includes(policy.targetRegion),
   )
 
   // 구/군 단위로 좁게 특화된 정책 → 부산 전역 정책 → 전국 정책 순으로 우선 노출
@@ -39,7 +40,7 @@ function toCamelCasePolicy(row) {
 // vercel dev 미사용, 네트워크 오류, 한도 초과 등) 로컬 mock 매칭으로 대체한다.
 export async function getPoliciesForCompany(company, limit = 3) {
   try {
-    const res = await fetch(`/api/policies?region=${encodeURIComponent(company.location)}`)
+    const res = await fetch(`/api/policies?region=${encodeURIComponent(company.region)}`)
     if (!res.ok) throw new Error(`정책 조회 실패 (${res.status})`)
     const { policies } = await res.json()
     return policies.map(toCamelCasePolicy).slice(0, limit)

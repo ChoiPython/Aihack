@@ -9,10 +9,11 @@
 // (Voyage AI의 input_type=document/query 구분과 동일한 개념)
 
 import { genAI, EMBEDDING_MODEL } from './gemini-client'
+import type { Company } from './types'
 
 /**
  * 기업 문서 하나를 벡터로 변환 (인덱싱 시점에 사용)
- * PRD 14.4: 임베딩 대상 텍스트는 name+region+industry+job_position+benefits+description 조합
+ * 임베딩 대상 텍스트는 buildCompanyDocument()로 조합한다.
  */
 export async function embedDocument(text: string): Promise<number[]> {
   const model = genAI.getGenerativeModel({ model: EMBEDDING_MODEL })
@@ -61,21 +62,26 @@ export async function embedDocumentsBatch(
 }
 
 /**
- * PRD 14.4: 임베딩 대상 텍스트 조합 규칙.
+ * 임베딩 대상 텍스트 조합 규칙.
  * DB에 별도 컬럼으로 저장하지 않고, 인덱싱 시점에 매번 조합해서 사용.
+ * companies 테이블 실제 컬럼(lib/db/schema.sql) 기준으로 조합하며,
+ * 값이 없는 필드는 문장에서 생략한다.
  */
-export function buildCompanyDocument(company: {
-  name: string
-  region: string
-  industry: string
-  job_position: string
-  benefits: string
-  description: string
-}): string {
-  return [
-    `${company.name}은(는) ${company.region}에 위치한 ${company.industry} 기업입니다.`,
-    `채용 직무: ${company.job_position}.`,
-    `복지: ${company.benefits}.`,
-    company.description,
-  ].join(' ')
+export function buildCompanyDocument(company: Company): string {
+  const parts: string[] = [
+    `${company.name}은(는) ${company.region ?? '지역 미상'}에 위치한 ${
+      company.industry ?? company.category ?? '업종 미상'
+    } 기업입니다.`,
+  ]
+
+  if (company.company_size) parts.push(`기업 규모: ${company.company_size}.`)
+  if (company.avg_starting_salary != null) parts.push(`초임 평균 연봉: ${company.avg_starting_salary}만원.`)
+  if (company.avg_annual_salary != null) parts.push(`평균 연봉: ${company.avg_annual_salary}만원.`)
+  if (company.worklife_balance_detail) parts.push(`워라밸: ${company.worklife_balance_detail}.`)
+  if (company.training_detail) parts.push(`교육/훈련: ${company.training_detail}.`)
+  if (company.welfare_detail) parts.push(`복지: ${company.welfare_detail}.`)
+  if (company.products_services) parts.push(`주요 제품/서비스: ${company.products_services}.`)
+  if (company.certifications) parts.push(`인증: ${company.certifications}.`)
+
+  return parts.join(' ')
 }

@@ -1,13 +1,8 @@
 import { forwardRef, useImperativeHandle, useState } from 'react'
 import { SectionHeading } from './SectionHeading'
-import { mockCompanies } from '../data/mockCompanies'
+import { INDUSTRY_OPTIONS, LOCATION_OPTIONS } from '../data/companyOptions'
 
-// mockCompanies에 실제로 존재하는 산업/지역만 선택지로 노출한다.
-// 하드코딩하면 데이터 담당(PRD 9.4)이 기업을 추가할 때마다 이 파일도 같이 고쳐야 해서
-// 새로 추가된 산업·지역의 기업은 검색 폼에서 아예 선택할 수 없는 문제가 생긴다.
-export const INDUSTRY_OPTIONS = [...new Set(mockCompanies.map((company) => company.industry))]
-
-export const LOCATION_OPTIONS = ['부산 전체', ...new Set(mockCompanies.map((company) => company.location))]
+export { INDUSTRY_OPTIONS, LOCATION_OPTIONS }
 
 const BENEFIT_OPTIONS = [
   '재택 근무 병행',
@@ -61,13 +56,13 @@ const UserProfileForm = forwardRef(function UserProfileForm({ onSubmit, isLoadin
 
   function fillDemoExample() {
     setProfile({
-      industry: '핀테크',
+      industry: '정보통신업',
       jobRole: '신입 개발자',
       skills: 'Java, Spring, AWS',
-      location: '부산 사상구',
+      location: '사상구',
       benefits: ['재택 근무 병행', '자기계발비 지원'],
       priority: '직무적합성',
-      freeText: '금융IT 분야에서 결제 시스템을 개발해보고 싶습니다.',
+      freeText: 'IT 분야에서 백엔드 개발자로 커리어를 시작하고 싶습니다.',
     })
   }
 

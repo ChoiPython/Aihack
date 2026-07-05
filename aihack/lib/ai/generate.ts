@@ -37,12 +37,16 @@ export async function generateRecommendationReasons(
       const c = r.company
       return `[기업 ${idx + 1} | id: ${c.id}]
 이름: ${c.name}
-지역: ${c.region}
-업종: ${c.industry}
-직무: ${c.job_position}
-고용형태: ${c.employment_type}
-복지: ${c.benefits}
-설명: ${c.description}`
+지역: ${c.region ?? '정보 없음'}
+업종: ${c.industry ?? c.category ?? '정보 없음'}
+기업 규모: ${c.company_size ?? '정보 없음'}
+초임 평균 연봉: ${c.avg_starting_salary ?? '정보 없음'}만원
+평균 연봉: ${c.avg_annual_salary ?? '정보 없음'}만원
+워라밸: ${c.worklife_balance_detail ?? '정보 없음'}
+교육/훈련: ${c.training_detail ?? '정보 없음'}
+복지: ${c.welfare_detail ?? '정보 없음'}
+주요 제품/서비스: ${c.products_services ?? '정보 없음'}
+인증: ${c.certifications ?? '없음'}`
     })
     .join('\n\n')
 

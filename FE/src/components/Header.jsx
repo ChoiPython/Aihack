@@ -1,14 +1,52 @@
-import { useState } from 'react'
-import { Link, NavLink } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 
 const NAV_LINKS = [
-  { label: '홈', to: '/', isPage: true },
-  { label: '추천받기', to: '/#profile-form' },
-  { label: '기업 탐색', to: '/#recommendation-results' },
+  { label: '홈', to: '/', key: 'home' },
+  { label: '추천받기', to: '/#profile-form', key: 'profile-form' },
+  { label: '기업탐색', to: '/#recommendation-results', key: 'recommendation-results' },
 ]
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [activeKey, setActiveKey] = useState('home')
+  const location = useLocation()
+
+  useEffect(() => {
+    const keyFromHash = getKeyFromHash(location.hash)
+    if (keyFromHash) {
+      setActiveKey(keyFromHash)
+    }
+  }, [location.hash])
+
+  useEffect(() => {
+    function syncActiveLink() {
+      const profileSection = document.getElementById('profile-form')
+      const resultsSection = document.getElementById('recommendation-results')
+      const marker = window.scrollY + window.innerHeight * 0.35
+
+      if (resultsSection && resultsSection.offsetTop <= marker) {
+        setActiveKey('recommendation-results')
+        return
+      }
+
+      if (profileSection && profileSection.offsetTop <= marker) {
+        setActiveKey('profile-form')
+        return
+      }
+
+      setActiveKey('home')
+    }
+
+    syncActiveLink()
+    window.addEventListener('scroll', syncActiveLink, { passive: true })
+    window.addEventListener('resize', syncActiveLink)
+
+    return () => {
+      window.removeEventListener('scroll', syncActiveLink)
+      window.removeEventListener('resize', syncActiveLink)
+    }
+  }, [location.pathname])
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-100 bg-white/80 backdrop-blur-md">
@@ -22,28 +60,15 @@ export default function Header() {
 
         <nav className="hidden items-center gap-7 md:flex">
           {NAV_LINKS.map((link) =>
-            link.isPage ? (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                end={link.to === '/'}
-                className={({ isActive }) =>
-                  `text-sm font-medium transition-colors hover:text-brand-primary ${
-                    isActive ? 'text-brand-primary' : 'text-slate-600'
-                  }`
-                }
-              >
-                {link.label}
-              </NavLink>
-            ) : (
-              <Link
-                key={link.to}
-                to={link.to}
-                className="text-sm font-medium text-slate-600 transition-colors hover:text-brand-primary"
-              >
-                {link.label}
-              </Link>
-            ),
+            <Link
+              key={link.to}
+              to={link.to}
+              className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors hover:bg-blue-50 hover:text-brand-primary ${
+                activeKey === link.key ? 'bg-blue-50 text-brand-primary' : 'text-slate-600'
+              }`}
+            >
+              {link.label}
+            </Link>,
           )}
         </nav>
 
@@ -79,7 +104,9 @@ export default function Header() {
               key={link.to}
               to={link.to}
               onClick={() => setMenuOpen(false)}
-              className="rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-blue-50 hover:text-brand-primary"
+              className={`rounded-lg px-3 py-2.5 text-sm font-medium transition-colors hover:bg-blue-50 hover:text-brand-primary ${
+                activeKey === link.key ? 'bg-blue-50 text-brand-primary' : 'text-slate-600'
+              }`}
             >
               {link.label}
             </Link>
@@ -95,4 +122,10 @@ export default function Header() {
       )}
     </header>
   )
+}
+
+function getKeyFromHash(hash) {
+  if (hash === '#profile-form') return 'profile-form'
+  if (hash === '#recommendation-results') return 'recommendation-results'
+  return 'home'
 }

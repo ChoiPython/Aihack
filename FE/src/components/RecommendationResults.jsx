@@ -4,7 +4,7 @@ import RecommendationCard from './RecommendationCard'
 import EmojiBurst from './EmojiBurst'
 
 const RecommendationResults = forwardRef(function RecommendationResults(
-  { status, recommendations, burstNonce },
+  { status, recommendations, burstNonce, onRetry },
   ref,
 ) {
   return (
@@ -22,6 +22,7 @@ const RecommendationResults = forwardRef(function RecommendationResults(
         <div className="mt-12">
           {status === 'idle' && <EmptyState />}
           {status === 'loading' && <LoadingState />}
+          {status === 'error' && <ErrorState onRetry={onRetry} />}
           {status === 'done' && recommendations.length > 0 && (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {recommendations.map((company, index) => (
@@ -47,6 +48,25 @@ function EmptyState() {
       <p className="mt-1.5 text-xs text-slate-500 sm:text-sm">
         위 사용자 질의 폼을 채우고 "내 기업 추천받기"를 눌러보세요.
       </p>
+    </div>
+  )
+}
+
+function ErrorState({ onRetry }) {
+  return (
+    <div className="mx-auto flex max-w-md flex-col items-center rounded-2xl border border-dashed border-rose-200 bg-rose-50/40 px-6 py-16 text-center">
+      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-100 text-2xl">⚠️</div>
+      <p className="mt-4 text-sm font-semibold text-brand-navy sm:text-base">
+        일시적으로 추천을 불러오지 못했어요.
+      </p>
+      <p className="mt-1.5 text-xs text-slate-500 sm:text-sm">잠시 후 다시 시도해주세요.</p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="mt-5 rounded-full bg-brand-primary px-6 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-blue-700 sm:text-sm"
+      >
+        다시 시도
+      </button>
     </div>
   )
 }

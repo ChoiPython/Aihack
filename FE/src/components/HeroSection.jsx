@@ -2,35 +2,28 @@ import { useState } from 'react'
 import floatingPerson2Img from '../assets/floating-person-2.png'
 import floatingPerson3Img from '../assets/floating-person-3.png'
 
+const EXAMPLE_QUERY =
+  '나는 동아대 AI학과 학점은 3.7, 1순위로 워라밸을 원하고 2순위로 연봉이야. 나에게 맞는 기업들을 찾아줘'
+
 const POPULAR_KEYWORDS = [
-  { label: '#신입환영', partial: { jobRole: '신입 개발자' } },
-  { label: '#IT', partial: { industry: 'IT·데이터' } },
-  { label: '#핀테크', partial: { industry: '핀테크' } },
-  { label: '#부산', partial: { location: '부산 전체' } },
-  { label: '#워라밸', partial: { priority: '워라밸' } },
-  { label: '#복지좋은기업', partial: { benefits: ['재택 근무 병행', '자율 출퇴근'] } },
+  { label: '#신입환영', phrase: '신입 개발자를 채용하는 곳' },
+  { label: '#IT', phrase: 'IT·데이터 업종' },
+  { label: '#핀테크', phrase: '핀테크 업종' },
+  { label: '#부산', phrase: '부산 지역' },
+  { label: '#워라밸', phrase: '워라밸을 중요하게 생각해' },
+  { label: '#복지좋은기업', phrase: '복지가 좋은 기업' },
 ]
 
 export default function HeroSection({ onQuickSearch, isLoading }) {
-  const [quick, setQuick] = useState({ industry: '', jobRole: '', location: '' })
-
-  function updateQuick(field, value) {
-    setQuick((prev) => ({ ...prev, [field]: value }))
-  }
+  const [query, setQuery] = useState('')
 
   function handleSubmit(event) {
     event.preventDefault()
-    onQuickSearch(quick)
+    onQuickSearch({ freeText: query })
   }
 
   function handleKeywordClick(keyword) {
-    const nextQuick = { ...quick, ...keyword.partial }
-    setQuick({
-      industry: nextQuick.industry ?? quick.industry,
-      jobRole: nextQuick.jobRole ?? quick.jobRole,
-      location: nextQuick.location ?? quick.location,
-    })
-    onQuickSearch({ ...quick, ...keyword.partial })
+    setQuery((prev) => (prev ? `${prev} ${keyword.phrase}` : keyword.phrase))
   }
 
   return (
@@ -94,61 +87,29 @@ export default function HeroSection({ onQuickSearch, isLoading }) {
           onSubmit={handleSubmit}
           className="mt-12 animate-slide-up scroll-mt-24 rounded-2xl border border-blue-100 bg-white/90 p-4 shadow-lg shadow-blue-100/60 backdrop-blur-sm sm:p-5"
         >
-          <div className="grid gap-3 lg:grid-cols-[1fr_1fr_1fr_auto] lg:items-end">
-            <QuickField label="관심 분야">
-              <input
-                type="text"
-                value={quick.industry}
-                onChange={(event) => updateQuick('industry', event.target.value)}
-                placeholder="예) 핀테크, IT, 바이오"
-                className="quick-input"
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+            <QuickField label="어떤 기업을 찾고 있나요? 자유롭게 설명해주세요">
+              <textarea
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder={EXAMPLE_QUERY}
+                rows={2}
+                className="quick-input resize-none"
               />
-            </QuickField>
-            <QuickField label="희망 직무">
-              <input
-                type="text"
-                value={quick.jobRole}
-                onChange={(event) => updateQuick('jobRole', event.target.value)}
-                placeholder="예) 개발, 마케팅, 기획"
-                className="quick-input"
-              />
-            </QuickField>
-            <QuickField label="지역">
-              <div className="relative">
-                <input
-                  type="text"
-                  value={quick.location}
-                  onChange={(event) => updateQuick('location', event.target.value)}
-                  placeholder="예) 부산, 서울, 대구"
-                  className="quick-input pr-8"
-                />
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"
-                >
-                  <path d="M12 21s7-6.5 7-11a7 7 0 10-14 0c0 4.5 7 11 7 11z" />
-                  <circle cx="12" cy="10" r="2.5" />
-                </svg>
-              </div>
             </QuickField>
 
             <button
               type="submit"
               disabled={isLoading}
-              className="flex items-center justify-center gap-1.5 rounded-xl bg-brand-primary px-8 py-3.5 text-sm font-semibold text-white shadow-md shadow-blue-200 transition-transform hover:scale-[1.02] hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100 lg:h-[46px]"
+              className="flex items-center justify-center gap-1.5 rounded-xl bg-brand-primary px-8 py-3.5 text-sm font-semibold text-white shadow-md shadow-blue-200 transition-transform hover:scale-[1.02] hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100 lg:h-[46px] lg:shrink-0"
             >
               <span aria-hidden>✨</span>
-              {isLoading ? '검색 중…' : 'AI 추천받기'}
+              {isLoading ? '검색 중…' : '물어보기'}
             </button>
           </div>
 
           <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3.5">
-            <span className="text-xs font-medium text-slate-400">인기 키워드</span>
+            <span className="text-xs font-medium text-slate-400">이런 식으로 물어보세요</span>
             {POPULAR_KEYWORDS.map((keyword) => (
               <button
                 key={keyword.label}

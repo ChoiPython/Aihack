@@ -6,9 +6,10 @@ import RecommendationResults from '../components/RecommendationResults'
 import { getRecommendations } from '../services/recommendationApi'
 
 export default function HomePage() {
-  const [status, setStatus] = useState('idle') // 'idle' | 'loading' | 'done'
+  const [status, setStatus] = useState('idle') // 'idle' | 'loading' | 'done' | 'error'
   const [recommendations, setRecommendations] = useState([])
   const [burstNonce, setBurstNonce] = useState(0)
+  const [lastProfile, setLastProfile] = useState(null)
   const resultsRef = useRef(null)
   const formRef = useRef(null)
   const location = useLocation()
@@ -35,10 +36,20 @@ export default function HomePage() {
 
   async function handleProfileSubmit(profile) {
     setStatus('loading')
-    const results = await getRecommendations(profile)
-    setRecommendations(results)
-    setStatus('done')
-    setBurstNonce((n) => n + 1)
+    setLastProfile(profile)
+    try {
+      const results = await getRecommendations(profile)
+      setRecommendations(results)
+      setStatus('done')
+      setBurstNonce((n) => n + 1)
+    } catch (error) {
+      console.error('추천 결과를 불러오지 못했습니다.', error)
+      setStatus('error')
+    }
+  }
+
+  function handleRetry() {
+    if (lastProfile) handleProfileSubmit(lastProfile)
   }
 
   // 히어로의 간단 검색바에서 입력한 값을 상세 폼에도 반영하고, 바로 추천을 실행한다.
@@ -59,6 +70,7 @@ export default function HomePage() {
         status={status}
         recommendations={recommendations}
         burstNonce={burstNonce}
+        onRetry={handleRetry}
       />
     </>
   )

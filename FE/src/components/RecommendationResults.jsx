@@ -23,6 +23,7 @@ const RecommendationResults = forwardRef(function RecommendationResults(
           {status === 'idle' && <EmptyState />}
           {status === 'loading' && <LoadingState />}
           {status === 'error' && <ErrorState onRetry={onRetry} />}
+          {status === 'done' && recommendations.length === 0 && <NoResultsState />}
           {status === 'done' && recommendations.length > 0 && (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {recommendations.map((company, index) => (
@@ -48,6 +49,18 @@ function EmptyState() {
       <p className="mt-1.5 text-xs text-slate-500 sm:text-sm">
         위 사용자 질의 폼을 채우고 "내 기업 추천받기"를 눌러보세요.
       </p>
+    </div>
+  )
+}
+
+function NoResultsState() {
+  return (
+    <div className="mx-auto flex max-w-md flex-col items-center rounded-2xl border border-dashed border-blue-200 bg-white/60 px-6 py-16 text-center">
+      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 text-2xl">🤔</div>
+      <p className="mt-4 text-sm font-semibold text-brand-navy sm:text-base">
+        조건에 맞는 기업이 없어요.
+      </p>
+      <p className="mt-1.5 text-xs text-slate-500 sm:text-sm">조건을 조금 더 넓혀서 다시 시도해보세요.</p>
     </div>
   )
 }

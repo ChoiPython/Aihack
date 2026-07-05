@@ -1,17 +1,12 @@
-// RAG 파이프라인의 "검색(Retrieval) + 생성(Generation)" 단계를 흉내 내는 mock API 레이어.
-// 실제 서비스에서는 이 함수가
-//   1) 사용자 입력을 embedding
-//   2) vector DB(Chroma/FAISS)에서 Top-K 기업 chunk 검색
-//   3) LLM(OpenAI/Claude API)에 검색 결과 + 사용자 프로필을 넘겨 추천 이유 생성
-// 을 순서대로 호출하는 REST 엔드포인트를 fetch로 감싸는 형태로 대체된다.
-// 지금은 백엔드가 없으므로 mockCompanies.js를 "vector DB 검색 결과"처럼 다루고,
-// 겹치는 항목을 스코어링해 그럴듯한 추천 이유를 즉석에서 생성한다.
+// RAG 파이프라인의 "검색(Retrieval) + 생성(Generation)" 단계 중 검색 단계는 아직 mock이다.
+// 실제 서비스에서는 사용자 입력을 embedding해 vector DB(Chroma/FAISS)에서 Top-K를 검색하지만,
+// 지금은 백엔드가 없으므로 mockCompanies.js를 "vector DB 검색 결과"처럼 다루고 키워드 겹침으로 스코어링한다.
+// 생성 단계(추천 이유 생성)는 실제 Gemini API를 호출한다 (geminiClient.js).
 
 import { mockCompanies } from '../data/mockCompanies'
 import { clampScore, PRIORITY_WEIGHTS } from '../utils/scoreFormatter'
 import { getPoliciesForCompany } from './policyMatcher'
-
-const SIMULATED_LATENCY_MS = 1100
+import { generateRecommendationReasons } from './geminiClient'
 
 function tokenize(value) {
   if (!value) return []
@@ -101,28 +96,35 @@ function scoreCompany(company, userProfile) {
 
 /**
  * 사용자 프로필을 받아 Top-K 추천 기업 목록을 반환한다.
- * 실제 네트워크 호출을 흉내 내기 위해 인위적인 지연을 둔다.
+ * 1) mockCompanies를 "vector DB 검색 결과"처럼 키워드 겹침으로 스코어링·정렬하고 (검색/Retrieval)
+ * 2) Top-K 후보를 Gemini에 배치로 넘겨 추천 이유를 생성한다 (생성/Generation).
+ * Gemini 호출이 실패하면 에러를 그대로 던져 호출부(HomePage)가 에러 상태를 보여주게 한다.
  */
-export function getRecommendations(userProfile, topK = 5) {
-  return new Promise((resolve) => {
-    setTimeout(async () => {
-      const scored = mockCompanies
-        .map((company) => {
-          const { finalScore, matchingKeywords, reasons } = scoreCompany(company, userProfile)
-          return { ...company, matchScore: finalScore, matchingKeywords, reasons }
-        })
-        .sort((a, b) => b.matchScore - a.matchScore)
-        .slice(0, topK)
+export async function getRecommendations(userProfile, topK = 5) {
+  const topCompanies = mockCompanies
+    .map((company) => {
+      const { finalScore, matchingKeywords, reasons } = scoreCompany(company, userProfile)
+      return { ...company, matchScore: finalScore, matchingKeywords, reasons }
+    })
+    .sort((a, b) => b.matchScore - a.matchScore)
+    .slice(0, topK)
 
-      // 정책은 실제 DB(/api/policies)에서 지역 기준으로 조회하고, 실패 시 로컬 mock으로 대체한다.
-      const withPolicies = await Promise.all(
-        scored.map(async (company) => ({
-          ...company,
-          policies: await getPoliciesForCompany(company),
-        })),
-      )
+  // 정책은 실제 DB(/api/policies)에서 지역 기준으로 조회하고(실패 시 로컬 mock으로 대체),
+  // 추천 이유는 Gemini로 배치 생성한다 — 두 호출은 서로 무관하니 병렬로 처리한다.
+  const [aiReasons, withPolicies] = await Promise.all([
+    generateRecommendationReasons(userProfile, topCompanies),
+    Promise.all(
+      topCompanies.map(async (company) => ({
+        ...company,
+        policies: await getPoliciesForCompany(company),
+      })),
+    ),
+  ])
 
-      resolve(withPolicies)
-    }, SIMULATED_LATENCY_MS)
-  })
+  const reasonsById = new Map(aiReasons.map((entry) => [entry.id, entry.reasons]))
+
+  return withPolicies.map((company) => ({
+    ...company,
+    reasons: reasonsById.get(company.id)?.length ? reasonsById.get(company.id) : company.reasons,
+  }))
 }

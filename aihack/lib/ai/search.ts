@@ -9,8 +9,8 @@
 // 필요 패키지: npm install chromadb
 
 import { ChromaClient, type Collection } from 'chromadb'
-import { embedQuery } from './embedding'
-import type { Company, SearchResultItem } from './types'
+import { embedQuery } from './embedding.js'
+import type { Company, SearchResultItem } from './types.js'
 
 const COLLECTION_NAME = 'companies'
 

@@ -1,4 +1,4 @@
-import { generateRecommendationReasons } from '../lib/ai/generate'
+import { generateRecommendationReasons } from '../lib/ai/generate.js'
 
 // POST /api/recommend
 // body: { userProfile, companies }

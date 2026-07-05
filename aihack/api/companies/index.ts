@@ -1,6 +1,6 @@
-import { searchCompanies } from '../../lib/ai/search'
+import { searchCompanies } from '../../lib/ai/search.js'
 import { getCompaniesByIds, searchCompaniesFallback } from '../../lib/db/queries.js'
-import type { SearchResultItem } from '../../lib/ai/types'
+import type { SearchResultItem } from '../../lib/ai/types.js'
 
 // GET /api/companies?q=자연어질의
 //

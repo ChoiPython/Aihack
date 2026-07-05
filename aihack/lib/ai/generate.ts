@@ -9,8 +9,8 @@
 // PRD 14.4 필수 규칙: 기업별로 API를 5번 나눠 부르지 않고
 // Top-K 전체를 프롬프트 하나에 넣어 한 번에 배치 처리할 것.
 
-import { genAI, GENERATION_MODEL } from './gemini-client'
-import type { SearchResultItem, RecommendationItem } from './types'
+import { genAI, GENERATION_MODEL } from './gemini-client.js'
+import type { SearchResultItem, RecommendationItem } from './types.js'
 
 /**
  * 검색된 기업 목록 + 사용자 질의 → 기업별 추천 이유를 한 번의 호출로 생성.

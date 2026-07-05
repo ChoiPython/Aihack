@@ -8,8 +8,8 @@
 //   - 사용자가 검색어를 입력했을 때   → RETRIEVAL_QUERY
 // (Voyage AI의 input_type=document/query 구분과 동일한 개념)
 
-import { genAI, EMBEDDING_MODEL } from './gemini-client'
-import type { Company } from './types'
+import { genAI, EMBEDDING_MODEL } from './gemini-client.js'
+import type { Company } from './types.js'
 
 /**
  * 기업 문서 하나를 벡터로 변환 (인덱싱 시점에 사용)

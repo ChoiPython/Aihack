@@ -9,9 +9,9 @@
 //    아직 준비되지 않았다면 채팅으로 먼저 함수 시그니처를 맞춰두세요.
 //    예: export async function getAllCompanies(): Promise<Company[]>
 
-import { buildCompanyDocument, embedDocument } from '../lib/ai/embedding'
-import { upsertCompanyVector } from '../lib/ai/search'
-import type { Company } from '../lib/ai/types'
+import { buildCompanyDocument, embedDocument } from '../lib/ai/embedding.js'
+import { upsertCompanyVector } from '../lib/ai/search.js'
+import type { Company } from '../lib/ai/types.js'
 
 // TODO: Backend/DB 담당의 실제 함수로 교체
 // import { getAllCompanies } from '../lib/db/companies'
